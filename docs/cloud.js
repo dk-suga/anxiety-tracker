@@ -25,7 +25,8 @@ export async function connectCloud(callbacks){
  });
  function ref(key){if(!uid)throw Error('Сначала войди.');return dbSDK.doc(db,'anxietyUsers',uid,'entries',key);}
  return {
-  signIn:()=>authSDK.signInWithPopup(auth,new authSDK.GoogleAuthProvider()),
+  signIn:(email,password)=>authSDK.signInWithEmailAndPassword(auth,email.trim(),password),
+  resetPassword:email=>authSDK.sendPasswordResetEmail(auth,email.trim()),
   async signOut(){generation++;unsubscribe?.();uid=null;callbacks.onSignedOut();await authSDK.signOut(auth);},
   save:(key,entry)=>dbSDK.setDoc(ref(key),entry),
   remove:key=>dbSDK.deleteDoc(ref(key)),

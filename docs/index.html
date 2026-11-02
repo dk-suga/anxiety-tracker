@@ -178,6 +178,12 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 @media(min-width:561px){.account-gate{margin-inline:auto}}
 @media(max-width:375px){h1{font-size:24px}.card{padding:14px}.insight-wrap{padding:18px 15px}.legend{gap:7px}.yg-head{font-size:8px}.yg-day{font-size:9px}.level{font-size:12px}}
 @media(max-height:500px){.modal{max-height:calc(var(--visual-height,100dvh) - 12px);padding:12px 16px;border-radius:14px}.modal-top{margin-bottom:4px}.field{margin-top:9px}}
+
+#signInForm input{display:block;width:100%;min-width:0;min-height:48px;border:1px solid #cbd7c6;border-radius:12px;padding:12px 14px;background:#fff;color:var(--ink);font-size:16px}
+#signInForm .label{margin:16px 0 7px}
+#signInForm input:focus{outline:2px solid var(--accent);outline-offset:2px}
+#resetPasswordBtn{display:block;min-height:44px;margin:8px auto 0;padding:8px}
+.account-gate{margin-top:calc(24px + env(safe-area-inset-top));margin-bottom:calc(24px + env(safe-area-inset-bottom))}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Трекер">
@@ -190,7 +196,14 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 <section id="accountGate" class="account-gate card">
 <h1>Трекер тревожности</h1><p>Твой личный календарь и заметки.</p>
 <p id="gateMessage" role="status">Загрузка…</p>
-<button id="signInBtn" class="primary" type="button" hidden>Войти через Google</button>
+<form id="signInForm" hidden>
+ <label class="label" for="loginEmail">Почта</label>
+ <input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required placeholder="you@example.com">
+ <label class="label" for="loginPassword">Пароль трекера</label>
+ <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Отдельный пароль для трекера">
+ <button id="signInBtn" class="primary" type="submit">Войти</button>
+ <button id="resetPasswordBtn" class="collapse-link" type="button">Забыли пароль?</button>
+</form>
 </section>
 <main id="appMain" hidden>
   <header class="header"><h1>Трекер тревожности</h1></header>
@@ -298,6 +311,7 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 <script type="module">
 import { parseImport } from "./data.js";
 import { connectCloud } from "./cloud.js";
+import { authErrorMessage } from "./auth-errors.js";
 (async()=>{
 const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const monthGen = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -548,17 +562,31 @@ $('exportBtn').onclick=async()=>{
 };
 try{
  cloud=await connectCloud({
-  onSignedOut(){lockApp('Войди, чтобы открыть личные записи.');$('signInBtn').hidden=false;},
-  onLoading(){lockApp('Открываем твои записи…');$('signInBtn').hidden=true;},
+  onSignedOut(){lockApp('Войди по почте и паролю трекера.');$('loginPassword').value='';$('signInForm').hidden=false;},
+  onLoading(){lockApp('Открываем твои записи…');$('signInForm').hidden=true;},
   onData(entries,{fromCache,pending}){
    data=entries;renderAll();$('accountGate').hidden=true;$('appMain').hidden=false;$('fab').hidden=false;
    $('firstImport').hidden=Object.keys(data).length>0;
    $('importBtn').disabled=fromCache;
    $('syncStatus').textContent=pending?'Сохранено на устройстве · ожидает синхронизации':fromCache?'На устройстве · нет связи с сервером':'Синхронизировано';
   },
-  onError(){lockApp('Не удалось открыть записи. Проверь подключение и настройки доступа.');$('signInBtn').hidden=false;}
+  onError(){lockApp('Не удалось открыть записи. Проверь подключение и настройки доступа.');$('signInForm').hidden=false;}
  });
- $('signInBtn').onclick=async()=>{try{await cloud.signIn();}catch(e){$('gateMessage').textContent='Вход не завершён. Разреши всплывающее окно и попробуй ещё раз.';}};
+ $('signInForm').onsubmit=async event=>{
+  event.preventDefault();if(!$('signInForm').reportValidity())return;
+  $('signInBtn').disabled=true;$('resetPasswordBtn').disabled=true;
+  $('gateMessage').textContent='Входим…';
+  try{await cloud.signIn($('loginEmail').value,$('loginPassword').value);}
+  catch(error){$('gateMessage').textContent=authErrorMessage(error);}
+  finally{$('loginPassword').value='';$('signInBtn').disabled=false;$('resetPasswordBtn').disabled=false;}
+ };
+ $('resetPasswordBtn').onclick=async()=>{
+  if(!$('loginEmail').reportValidity())return;
+  $('resetPasswordBtn').disabled=true;
+  try{await cloud.resetPassword($('loginEmail').value);$('gateMessage').textContent='Если для этой почты есть аккаунт, придёт письмо для смены пароля. Проверь также «Спам».';}
+  catch(error){$('gateMessage').textContent=authErrorMessage(error);}
+  finally{$('resetPasswordBtn').disabled=false;}
+ };
  $('signOutBtn').onclick=async()=>{await cloud.signOut();};
 }catch(e){lockApp(e.message);}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
