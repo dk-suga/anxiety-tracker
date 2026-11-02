@@ -184,6 +184,13 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 #signInForm input:focus{outline:2px solid var(--accent);outline-offset:2px}
 #resetPasswordBtn{display:block;min-height:44px;margin:8px auto 0;padding:8px}
 .account-gate{margin-top:calc(24px + env(safe-area-inset-top));margin-bottom:calc(24px + env(safe-area-inset-bottom))}
+
+/* Calendar cells show only day and level; notes stay in the day dialog. */
+.day{min-width:0;overflow:hidden}
+.data-tools{margin:24px 0 0;border-top:1px solid var(--line);padding-top:14px;color:#68736c;font-size:13px}
+.data-tools summary{cursor:pointer;min-height:44px;padding:10px 0;touch-action:manipulation}
+.data-tools .data-actions{margin:8px 0}
+#dataMessage:empty{display:none}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Трекер">
@@ -208,11 +215,8 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 <main id="appMain" hidden>
   <header class="header"><h1>Трекер тревожности</h1></header>
 <div class="account-bar"><span id="syncStatus" role="status">Загрузка записей…</span><button id="signOutBtn" class="close" type="button">Выйти</button></div>
-<section id="firstImport" class="empty-state" hidden><strong>Начни со своей истории</strong><p>Выбери JSON с записями или отметь первый день через плюс.</p></section>
-<div class="data-actions"><button id="importBtn" class="close" type="button" disabled>Импорт из файла</button><button id="exportBtn" class="close" type="button">Скачать копию</button></div>
-<input id="importFile" type="file" accept=".json,application/json" hidden>
-<section id="importReview" class="empty-state" hidden><p id="importSummary"></p><button id="confirmImport" class="today-btn" type="button">Импортировать</button> <button id="cancelImport" class="close" type="button">Отмена</button></section>
-<p id="dataMessage" class="muted" role="status"></p>
+<section id="firstImport" class="empty-state" hidden><strong>Начни со своей истории</strong><p>Выбери JSON в разделе «Данные и резервная копия» внизу страницы или отметь первый день через плюс.</p></section>
+
 
   <section class="stats">
     <div class="card stat"><div class="value" id="totalMarked">0</div><div class="label">Всего дней отмечено</div></div>
@@ -264,6 +268,10 @@ input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 
 
   <div class="footer">Твои чувства — не оценка твоего дня</div>
+<details id="dataTools" class="data-tools"><summary>Данные и резервная копия</summary><div class="data-actions"><button id="importBtn" class="close" type="button" disabled>Импорт из файла</button><button id="exportBtn" class="close" type="button">Скачать копию</button></div>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+<section id="importReview" class="empty-state" hidden><p id="importSummary"></p><button id="confirmImport" class="today-btn" type="button">Импортировать</button> <button id="cancelImport" class="close" type="button">Отмена</button></section>
+<p id="dataMessage" class="muted" role="status"></p></details>
 </main>
 
 <button class="fab" id="fab" hidden aria-label="Добавить запись">+</button>
@@ -370,9 +378,9 @@ function renderMonth(){
     const entry = entryFor(key);
     const btn = document.createElement('button');
     btn.className = `day ${entry.level || ''}`;
-    const notePreview = entry.note ? `<div class="note-preview">${escapeHtml(entry.note)}</div>` : '';
-    const tagsCount = entry.tags && entry.tags.length ? `<div class="tiny">${entry.tags.length} тег.</div>` : '';
-    btn.innerHTML = `<span class="num">${day}</span>${tagsCount || '<span class="dot"></span>'}${notePreview}`;
+    btn.innerHTML = `<span class="num">${day}</span><span class="dot"></span>`;
+    const state = entry.level ? levelMeta[entry.level][0] : 'нет отметки';
+    btn.setAttribute('aria-label',`${day} ${monthGen[viewMonth.getMonth()]}, ${state}${entry.note ? ', есть заметка' : ''}`);
     btn.onclick = () => openModal(key);
     cal.appendChild(btn);
   }
@@ -528,7 +536,7 @@ let cloud = null;
 let pendingImport = null;
 function showWriteError(){ $('syncStatus').textContent='Не удалось сохранить. Проверь подключение и права доступа.'; }
 function lockApp(message){pendingImport=null;$('importReview').hidden=true;$('dataMessage').textContent='';data={};closeModal();$('appMain').hidden=true;$('fab').hidden=true;$('accountGate').hidden=false;$('gateMessage').textContent=message;renderAll();}
-$('importBtn').onclick=()=>{ $('importFile').value=''; $('importFile').click(); };
+$('importBtn').onclick=()=>{ $('dataTools').open=true; $('importFile').value=''; $('importFile').click(); };
 $('importFile').onchange=async()=>{
  try{
   const file=$('importFile').files[0]; if(!file)return;
@@ -546,7 +554,7 @@ $('confirmImport').onclick=async()=>{
  $('confirmImport').disabled=true;
  try{
   await cloud.importEntries(additions);
-  pendingImport=null;$('importReview').hidden=true;$('dataMessage').textContent='История импортирована.';
+  pendingImport=null;$('importReview').hidden=true;$('dataMessage').textContent='';$('dataTools').open=false;
  }catch(e){$('dataMessage').textContent='Импорт не завершён. Его можно повторить: существующие записи не перезапишутся.';}
  finally{$('confirmImport').disabled=false;}
 };

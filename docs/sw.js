@@ -1,4 +1,4 @@
-const CACHE='anxiety-shell-v3';
+const CACHE='anxiety-shell-v4';
 const SDK=['firebase-app','firebase-auth','firebase-firestore'].map(name=>`https://www.gstatic.com/firebasejs/13.1.0/${name}.js`);
 const SHELL=['./','./index.html','./data.js','./cloud.js','./auth-errors.js','./firebase-config.js','./manifest.webmanifest','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>Promise.all([cache.addAll(SHELL),...SDK.map(url=>cache.add(url).catch(()=>{}))]))));
