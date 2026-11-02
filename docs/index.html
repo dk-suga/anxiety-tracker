@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Трекер тревожности</title>
+<style>
+:root{--pink:#fbe0dc;--gray:#95949b;--sage:#ccd8ce;--ink:#45424a;--paper:#fffdfa;--line:#e8e2df;--green:#77aa8c;--yellow:#f4d56c;--orange:#efa16e;--red:#e77c76;--shadow:0 10px 28px rgba(76,66,72,.08)}
+*{box-sizing:border-box} html,body{margin:0} body{background:linear-gradient(180deg,#f6ecea 0%, #f3efed 50%, #dfe8e1 100%);color:var(--ink);font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;min-height:100vh}
+button,input,textarea{font:inherit} button{cursor:pointer}
+main{max-width:980px;margin:0 auto;padding:18px 14px 96px}
+h1{margin:0;font-size:34px;font-weight:800;letter-spacing:-.03em}
+.card{background:rgba(255,253,251,.9);border:1px solid rgba(255,255,255,.72);border-radius:24px;padding:16px;box-shadow:var(--shadow)}
+.header{margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:12px}
+.stat .value{font-size:42px;font-weight:800;line-height:1} .stat .label{font-size:12px;color:#756f77;margin-top:6px;line-height:1.35}
+.insight-wrap{margin-bottom:12px} .section-title{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px} .muted{color:#7c7680;font-size:13px;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:8px} .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 12px;background:#fff;border:1px solid #e5dedb;font-size:13px} .chip strong{font-size:12px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.toggle{display:inline-flex;background:rgba(255,255,255,.6);padding:4px;border-radius:16px;border:1px solid #e8dfdc} .toggle button{border:0;background:transparent;padding:10px 14px;border-radius:12px;color:#68636b} .toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.05);font-weight:700}
+.month-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .navbtn{border:1px solid #ddd5d2;background:#fff;border-radius:14px;padding:10px 12px;min-width:44px} .month-label{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:#736f77} .legend i{display:inline-block;width:10px;height:10px;border-radius:4px;margin-right:5px}
+.view{display:none} .view.active{display:block}
+.weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px} .weekdays{margin:10px 0 8px} .weekdays span{font-size:12px;text-align:center;color:#847f87}
+.day{min-height:64px;border-radius:18px;padding:8px;border:1px solid var(--line);background:white;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;transition:.15s transform,.15s box-shadow,.15s border-color;color:#7d7980} .day:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(80,70,77,.08)} .day .num{font-size:13px;font-weight:700;color:#534f56} .day .dot{align-self:flex-end;width:9px;height:9px;border-radius:50%;background:currentColor} .day .tiny{font-size:10px;color:inherit;opacity:.85} .day.none{background:#e5efe8;color:#4e7b67} .day.low{background:#fff2c6;color:#997726} .day.medium{background:#f9dcc3;color:#a16443} .day.high{background:#f4c8c2;color:#a34c49} .day.empty{visibility:hidden} .day:not(.none):not(.low):not(.medium):not(.high) .dot{display:none}
+.year-grid{display:grid;grid-template-columns:26px repeat(12,minmax(0,1fr));gap:4px;align-items:center} .yg-head{font-size:10px;text-align:center;color:#7b7580;font-weight:700;white-space:nowrap} .yg-day{font-size:10px;color:#7b7580;text-align:center} .yg-cell{aspect-ratio:1;border-radius:4px;background:#efebe8;border:1px solid #ece7e3} .yg-cell.none{background:var(--green);border-color:var(--green)} .yg-cell.low{background:var(--yellow);border-color:var(--yellow)} .yg-cell.medium{background:var(--orange);border-color:var(--orange)} .yg-cell.high{background:var(--red);border-color:var(--red)} .yg-cell.invalid{visibility:hidden}
+.fab{position:fixed;right:18px;bottom:22px;width:62px;height:62px;border-radius:50%;border:0;background:var(--gray);color:#fff;font-size:34px;line-height:1;box-shadow:0 14px 28px rgba(89,84,94,.28);z-index:30} .fab:active{transform:scale(.97)}
+.backdrop{position:fixed;inset:0;background:rgba(34,31,35,.28);display:none;z-index:40} .backdrop.open{display:block}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,560px);max-height:min(88vh,760px);overflow:auto;background:var(--paper);border-radius:24px;padding:18px;box-shadow:0 24px 48px rgba(48,42,46,.22);display:none;z-index:50} .modal.open{display:block}
+.modal-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px} .close{border:1px solid #ddd5d2;background:#fff;border-radius:12px;padding:8px 12px}
+.field{margin-top:12px} .label{display:block;font-size:13px;font-weight:700;margin-bottom:8px} input[type="date"], textarea{width:100%;border:1px solid #ddd5d2;border-radius:16px;padding:12px 14px;background:#fff;outline:none} textarea{min-height:104px;resize:vertical} input[type="date"]:focus, textarea:focus{border-color:#a29ca5;box-shadow:0 0 0 3px rgba(149,148,155,.12)}
+.levels{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} .level{border:1px solid #ddd5d2;background:#fff;border-radius:16px;padding:12px;text-align:left;display:flex;align-items:center;gap:10px} .level.active{border-color:#7b7580;box-shadow:0 0 0 2px rgba(123,117,128,.10)} .swatch{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
+.tagbox{border:1px solid #ddd5d2;border-radius:16px;padding:10px;background:#fff} .taglist{display:flex;flex-wrap:wrap;gap:8px} .tagbtn{border:1px solid #e3dbd8;background:#fff;border-radius:999px;padding:8px 10px;font-size:13px;color:#5b5660} .tagbtn.active{background:#ece9ee;border-color:#bdb5c0;color:#38343c} .collapse-link{margin-top:8px;border:0;background:transparent;color:#6c6770;padding:0;font-size:13px}
+.selected-tags{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px} .selected-tag{background:#f3f0f4;border-radius:999px;padding:6px 10px;font-size:12px}
+.custom-row{display:flex;gap:8px;margin-top:10px} .custom-row input{flex:1;border:1px solid #ddd5d2;border-radius:12px;padding:10px 12px}
+.modal-actions{display:flex;gap:10px;margin-top:16px} .primary{flex:1;border:0;background:var(--gray);color:#fff;border-radius:16px;padding:14px;font-weight:700} .ghost{border:1px solid #ddd5d2;background:#fff;color:var(--ink);border-radius:16px;padding:14px}
+.note-preview{margin-top:4px;font-size:11px;opacity:.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty-state{padding:14px;border-radius:18px;background:rgba(255,255,255,.55);border:1px dashed #ddd5d2}
+.footer{text-align:center;margin-top:14px;font-size:12px;color:#706c73}
+@media(max-width:560px){main{padding:16px 12px 96px} h1{font-size:30px} .stats{gap:10px} .stat .value{font-size:38px} .month-label{font-size:20px} .weekdays,.calendar{gap:6px} .day{min-height:56px;border-radius:16px;padding:7px} .year-grid{grid-template-columns:22px repeat(12,minmax(0,1fr));gap:3px} .yg-head,.yg-day{font-size:9px} .levels{grid-template-columns:1fr} }
+
+/* Explicit control colors: prevents white-on-white controls in embedded viewers */
+button,input,textarea{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
+button{appearance:none;-webkit-appearance:none}
+.navbtn,.close,.ghost,.level,.tagbtn,.collapse-link,.toggle button{color:#45424a!important;-webkit-text-fill-color:#45424a!important}
+.primary,.fab{color:#fff!important;-webkit-text-fill-color:#fff!important}
+.level{min-height:46px;font-size:14px;font-weight:600}
+.level.active{background:#f3f0f2}
+input[type="date"]{color:#45424a!important;-webkit-text-fill-color:#45424a!important;color-scheme:light;min-height:44px}
+.custom-row input{background:#fff!important;color:#45424a!important;-webkit-text-fill-color:#45424a!important;min-width:0}
+input::placeholder,textarea::placeholder{color:#8c8790!important;-webkit-text-fill-color:#8c8790!important;opacity:1}
+.navbtn{font-size:24px;font-weight:650;line-height:1;min-width:40px;min-height:40px;padding:6px 9px}
+.month-nav{gap:6px}
+.month-label{font-size:19px}
+.day{min-height:46px;border-radius:12px;padding:6px}
+.day .num{font-size:12px}
+.day .dot{height:7px;width:7px}
+.weekdays,.calendar{gap:6px}
+.modal{background:#fffdfa;}
+@media(max-width:560px){
+ .card{border-radius:21px;padding:13px}
+ .month-label{font-size:17px}
+ .toolbar{gap:8px}
+ .toggle button{padding:8px 11px}
+ .day{min-height:42px;border-radius:11px;padding:5px}
+ .day .num{font-size:11px}
+ .day .dot{height:6px;width:6px}
+ .weekdays,.calendar{gap:5px}
+ .modal{padding:16px;max-height:87dvh}
+ .level{min-height:44px}
+}
+
+/* Calm, compact visual hierarchy */
+:root{--ink:#343f3b;--paper:#fffefa;--line:#dce3dd;--accent:#426854;--shadow:0 4px 18px rgba(49,68,57,.035)}
+body{background:radial-gradient(ellipse at 100% 0%,#efe6e1 0%,transparent 44%),#f3f5ef;color:var(--ink)}
+main{max-width:860px;padding-top:28px}
+.header{margin-bottom:22px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.035em}
+.card{background:var(--paper);border:1px solid #e0e5de;border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+.stats{gap:14px;margin-bottom:20px}
+.stat{padding:20px 22px}
+.stat .value{font-size:36px;font-weight:650;letter-spacing:-.04em}
+.stat .label{font-size:13px;color:#626e66;font-weight:500;margin-top:8px}
+.stat:last-child{background:#eaf0e7;border-color:#d6e2d3}
+.stat:last-child .value{color:var(--accent)}
+.insight-wrap{margin-top:24px;margin-bottom:16px;padding:24px;border-top:3px solid #c4d4bf}
+.section-title{font-size:19px;font-weight:650;line-height:1.35}
+.muted{color:#68736c}
+.toolbar{margin-bottom:20px;gap:16px}
+.toggle{background:#e9eee7;border:1px solid #b9cbb9;border-radius:13px;padding:4px;gap:3px}
+.toggle button{min-height:40px;padding:9px 20px;border-radius:9px;font-size:14px;font-weight:600;transition:background .18s,color .18s}
+.toggle button.active{background:var(--accent);color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:0 2px 5px #304b3720}
+.toggle button:not(.active):hover{background:#dbe5d8}
+.navbtn{background:#f8faf5;border:1px solid #d3ddd0;border-radius:11px;font-size:20px;font-weight:500;width:36px;min-width:36px;min-height:36px;padding:5px}
+.month-nav{gap:10px}
+.month-label{font-size:18px;font-weight:650;letter-spacing:-.02em}
+.year-label{font-size:18px;font-weight:650;color:var(--accent)}
+.weekdays span{color:#657168;font-size:12px}
+.day{min-height:52px;border-radius:10px;border-color:#e0e5de}
+.day .num{font-size:12px}
+.legend{gap:14px;font-size:12px;color:#626e66;margin-top:18px}
+.year-grid{width:100%;max-width:520px;margin:0 auto;grid-template-columns:26px repeat(12,minmax(0,1fr));column-gap:4px;row-gap:4px}
+.yg-head{font-size:11px;color:#5a685e;font-weight:600;padding-bottom:6px}
+.yg-day{font-size:11px;color:#5a685e;line-height:20px}
+.yg-cell{width:min(100%,20px);height:auto;min-width:0;min-height:0;padding:0;justify-self:center;aspect-ratio:1;border-radius:4px;background:#edf0e9;border-color:#e5e9e0;transition:transform .15s}
+.yg-cell:hover{transform:scale(1.15);outline:2px solid var(--accent);outline-offset:2px}
+.fab{background:var(--accent);width:54px;height:54px;font-size:30px;box-shadow:0 6px 20px #304b3733;bottom:max(22px,env(safe-area-inset-bottom))}
+.modal{background:var(--paper);border:1px solid #e0e5de;padding:24px;border-radius:20px}
+.modal .section-title{font-size:21px}
+.close{font-size:12px;padding:8px 10px;background:#f5f7f1;border-color:#d7dfd3}
+.label{color:#46564b;font-weight:600;font-size:13px}
+.level{border-color:#d7dfd3;border-radius:12px;font-weight:500}
+.level.active{background:#eaf1e6;border-color:#749576;box-shadow:0 0 0 1px #749576}
+.tagbox{background:#f8faf5;border-color:#e0e6da;border-radius:14px}
+.tagbtn{font-size:12px;background:#fffefa;border-color:#dbe3d5}
+.tagbtn.active{background:#e1edda;border-color:#8da780;color:#334b37}
+.collapse-link{font-size:12px;text-decoration:underline;text-underline-offset:3px;padding:5px 0}
+.selected-tags:empty{display:none}
+.selected-tag{background:#e6efdf;color:#3f5c40}
+.custom-row{align-items:center;gap:8px;margin-top:14px}
+.custom-row input{width:0;min-width:0;font-size:14px;border-color:#d4dece;border-radius:10px;height:40px;padding:9px 11px}
+#addCustomTag{border:1px solid #c8d7bf;border-radius:10px;width:auto;min-width:0;min-height:40px;flex:0 0 auto;font-size:13px;font-weight:600;line-height:1;padding:10px 13px;background:#e6eee0;border-color:#c8d7bf}
+input[type=date],textarea{border-color:#d4dece;border-radius:12px;font-size:16px}
+input[type=date]:focus,textarea:focus{border-color:#749576;box-shadow:0 0 0 3px #74957620}
+.primary{background:var(--accent);border-radius:12px;font-size:14px}
+.ghost{border-color:#d4dece;border-radius:12px;font-size:14px}
+button:focus-visible{outline:3px solid #527953;outline-offset:3px}
+button:disabled{opacity:.5;cursor:default}
+.footer{color:#69766b;font-size:12px;margin-top:22px}
+@media(max-width:560px){
+ main{padding:22px 14px 98px} h1{font-size:27px}
+ .header{margin-bottom:18px}.card{padding:16px;border-radius:18px}
+ .stats{gap:10px;margin-bottom:16px}.stat{padding:18px 15px}.stat .value{font-size:32px}.stat .label{font-size:12px}
+ .toolbar{gap:14px;margin-bottom:16px}.toggle button{padding:9px 18px}
+ .month-nav{justify-content:space-between;width:100%;gap:8px}.month-label{font-size:17px}
+ .year-label{font-size:17px;margin-left:auto}
+ .day{min-height:44px;border-radius:9px}.weekdays,.calendar{gap:5px}
+ .insight-wrap{margin-top:22px;padding:20px 17px}.section-title{font-size:18px}
+ .year-grid{grid-template-columns:20px repeat(12,minmax(0,1fr));column-gap:2px;row-gap:3px}
+ .yg-head{font-size:9px;padding-bottom:4px}.yg-day{font-size:10px;line-height:18px}
+ .yg-cell{width:min(100%,17px);border-radius:3px}
+ .legend{gap:10px;font-size:11px}
+ .modal{padding:20px 17px;width:min(94vw,560px);max-height:88dvh}.levels{grid-template-columns:repeat(2,minmax(0,1fr))}.level{padding:11px 9px;font-size:13px;gap:7px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+
+/* Joined year columns and quick return to the present */
+.year-grid{max-width:350px;column-gap:0;row-gap:1px;grid-template-columns:26px repeat(12,minmax(0,1fr))}
+.yg-cell{width:100%;height:20px;aspect-ratio:auto;border:0;border-radius:0;box-shadow:inset -1px 0 #fff8}
+.yg-cell:hover{transform:none;outline-offset:-2px}
+.yg-head{font-size:10px;padding-bottom:8px}
+.today-btn{border:1px solid #b9cbb9;border-radius:10px;background:#e9eee7;color:var(--accent);padding:8px 12px;font-size:13px;font-weight:600;min-height:36px}
+.today-btn:hover{background:#dae6d7}
+.today-btn[hidden]{display:none}
+@media(max-width:560px){.year-grid{grid-template-columns:22px repeat(12,minmax(0,1fr));column-gap:0;row-gap:1px}.yg-cell{width:100%;height:18px;border-radius:0}.yg-head{font-size:9px}.today-btn{margin-left:auto}.month-nav{flex-wrap:nowrap}}
+
+[hidden]{display:none!important}
+.account-gate{max-width:500px;margin:12vh auto;padding:28px;line-height:1.5}
+.account-gate h1{font-size:27px}.account-gate .primary{width:100%;margin-top:12px}
+.account-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;font-size:12px;color:#68736c}
+.data-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+@media(max-width:560px){.account-gate{margin:10vh 14px}}
+
+/* iPhone, including standalone mode and the on-screen keyboard */
+html{-webkit-text-size-adjust:100%;color-scheme:light}
+body{min-height:100svh;overscroll-behavior-y:none}
+main{padding-top:calc(22px + env(safe-area-inset-top));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.fab{right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));min-height:54px}
+.modal{top:calc(var(--visual-top,0px) + var(--visual-height,100dvh)/2);max-height:calc(var(--visual-height,100dvh) - 24px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-block:18px}
+.modal-actions{position:sticky;bottom:-1px;background:var(--paper);padding:10px 0 calc(4px + env(safe-area-inset-bottom));z-index:1}
+.custom-row input,input[type=date],textarea{font-size:16px!important}
+input[type=date]{min-width:0;max-width:100%;display:block;min-height:46px}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
+.tagbtn{min-height:36px}.close,.today-btn,.navbtn,.toggle button{min-height:44px}
+.account-gate{margin-top:calc(8vh + env(safe-area-inset-top));margin-left:max(14px,env(safe-area-inset-left));margin-right:max(14px,env(safe-area-inset-right))}
+@media(min-width:561px){.account-gate{margin-inline:auto}}
+@media(max-width:375px){h1{font-size:24px}.card{padding:14px}.insight-wrap{padding:18px 15px}.legend{gap:7px}.yg-head{font-size:8px}.yg-day{font-size:9px}.level{font-size:12px}}
+@media(max-height:500px){.modal{max-height:calc(var(--visual-height,100dvh) - 12px);padding:12px 16px;border-radius:14px}.modal-top{margin-bottom:4px}.field{margin-top:9px}}
+</style>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Трекер">
+<meta name="theme-color" content="#426854">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+</head>
+<body>
+<section id="accountGate" class="account-gate card">
+<h1>Трекер тревожности</h1><p>Твой личный календарь и заметки.</p>
+<p id="gateMessage" role="status">Загрузка…</p>
+<button id="signInBtn" class="primary" type="button" hidden>Войти через Google</button>
+</section>
+<main id="appMain" hidden>
+  <header class="header"><h1>Трекер тревожности</h1></header>
+<div class="account-bar"><span id="syncStatus" role="status">Загрузка записей…</span><button id="signOutBtn" class="close" type="button">Выйти</button></div>
+<section id="firstImport" class="empty-state" hidden><strong>Начни со своей истории</strong><p>Выбери JSON с записями или отметь первый день через плюс.</p></section>
+<div class="data-actions"><button id="importBtn" class="close" type="button" disabled>Импорт из файла</button><button id="exportBtn" class="close" type="button">Скачать копию</button></div>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+<section id="importReview" class="empty-state" hidden><p id="importSummary"></p><button id="confirmImport" class="today-btn" type="button">Импортировать</button> <button id="cancelImport" class="close" type="button">Отмена</button></section>
+<p id="dataMessage" class="muted" role="status"></p>
+
+  <section class="stats">
+    <div class="card stat"><div class="value" id="totalMarked">0</div><div class="label">Всего дней отмечено</div></div>
+    <div class="card stat"><div class="value" id="totalCalm">0</div><div class="label">Дней без тревоги</div></div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar">
+      <div class="toggle" role="tablist" aria-label="Формат просмотра">
+        <button id="modeMonthBtn" role="tab" aria-controls="monthView" aria-selected="true" class="active" type="button">Месяц</button>
+        <button id="modeYearBtn" role="tab" aria-controls="yearView" aria-selected="false" type="button">Год</button>
+      </div>
+      <button class="today-btn" id="todayBtn" type="button">Сегодня</button>
+      <div class="year-label" id="yearLabel" hidden></div>
+      <div id="monthNav" class="month-nav">
+        <button class="navbtn" id="prevMonth" type="button">←</button>
+        <div class="month-label" id="monthLabel">Октябрь 2026</div>
+        <button class="navbtn" id="nextMonth" type="button">→</button>
+      </div>
+    </div>
+
+    <div id="monthView" class="view active">
+      <div class="weekdays"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+      <div id="calendar" class="calendar"></div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>Нет</span>
+        <span><i style="background:var(--yellow)"></i>Низкая</span>
+        <span><i style="background:var(--orange)"></i>Средняя</span>
+        <span><i style="background:var(--red)"></i>Высокая</span>
+      </div>
+    </div>
+
+    <div id="yearView" class="view">
+      <div class="year-grid" id="yearGrid"></div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>Нет</span>
+        <span><i style="background:var(--yellow)"></i>Низкая</span>
+        <span><i style="background:var(--orange)"></i>Средняя</span>
+        <span><i style="background:var(--red)"></i>Высокая</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card insight-wrap">
+    <h2 class="section-title">Что чаще всего влияет на тревогу</h2>
+    <div id="insights" class="chips"></div>
+    <div id="insightsEmpty" class="muted" style="display:none">Пока нет тегов для анализа.</div>
+  </section>
+
+
+  <div class="footer">Твои чувства — не оценка твоего дня</div>
+</main>
+
+<button class="fab" id="fab" hidden aria-label="Добавить запись">+</button>
+<div class="backdrop" id="backdrop"></div>
+<section class="modal" id="modal" aria-modal="true" role="dialog" aria-labelledby="modalTitle">
+  <div class="modal-top">
+    <h2 id="modalTitle" class="section-title" style="margin:0">Запись дня</h2>
+    <button class="close" id="closeModal" type="button">Закрыть</button>
+  </div>
+
+  <div class="field">
+    <label class="label" for="entryDate">Дата</label>
+    <input id="entryDate" type="date">
+  </div>
+
+  <div class="field">
+    <div class="label">Уровень тревоги</div>
+    <div id="levels" class="levels"></div>
+  </div>
+
+  <div class="field">
+    <div class="label" id="tagHeading">Сначала выбери уровень тревоги</div>
+    <div class="tagbox">
+      <div id="tagHint" class="muted">Теги появятся после выбора уровня</div><div id="tagList" class="taglist"></div>
+      <button id="toggleTags" class="collapse-link" type="button">Показать ещё</button>
+      <div id="selectedTags" class="selected-tags"></div>
+      <div class="custom-row">
+        <input id="customTagInput" type="text" maxlength="100" enterkeyhint="done" autocapitalize="sentences" aria-label="Свой тег" placeholder="Свой тег">
+        <button id="addCustomTag" type="button">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="label" for="entryNote">Что повлияло</label>
+    <textarea id="entryNote" maxlength="10000" placeholder="Пара слов о дне, триггере или о том, что помогло"></textarea>
+  </div>
+
+  <div class="modal-actions">
+    <button id="deleteEntry" class="ghost" type="button">Удалить</button>
+    <button id="saveEntry" class="primary" type="button">Сохранить</button>
+  </div>
+</section>
+
+<script type="module">
+import { parseImport } from "./data.js";
+import { connectCloud } from "./cloud.js";
+(async()=>{
+const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const monthGen = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const levelMeta = {none:['Нет','var(--green)'],low:['Низкая','var(--yellow)'],medium:['Средняя','var(--orange)'],high:['Высокая','var(--red)']};
+const triggerTags = ['Работа','Дедлайны','Перегрузка','Недосып','Усталость','Конфликт','Неопределённость','Здоровье','Финансы','Семья','Общение','Одиночество','Новости','Соцсети','Дорога','Шум','Планы','Самокритика'];
+const calmTags = ['Сон','Отдых','Прогулка','Спорт','Музыка','Чтение','Творчество','Поддержка близких','Время для себя','Природа','Общение','Решение проблемы','Порядок в делах','Медитация','Терапия','Хобби'];
+let selectedKey = dateKey(new Date());
+let viewMonth = monthStart(parseKey(selectedKey));
+let mode = 'month';
+let modalLevel = '';
+let modalTags = [];
+let tagsExpanded = false;
+let customTags = [];
+
+function $(id){return document.getElementById(id)}
+function pad(n){return String(n).padStart(2,'0')}
+function dateKey(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function parseKey(k){const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d)}
+function monthStart(d){return new Date(d.getFullYear(), d.getMonth(), 1)}
+let data = {};
+function allTags(){ const category = modalLevel === 'none' ? 'calm' : 'trigger'; const presets = category === 'calm' ? calmTags : triggerTags; return [...new Set([...presets, ...customTags.filter(t=>t.category===category).map(t=>t.name), ...modalTags])]; }
+function entryFor(key){ return data[key] || {level:'', note:'', tags:[]}; }
+function totalMarked(){ return Object.values(data).filter(v => v && v.level).length; }
+function totalCalm(){ return Object.values(data).filter(v => v && v.level === 'none').length; }
+function topInfluences(kind){
+  const counts = new Map();
+  Object.values(data).forEach(v => {
+    if(!v || !v.level || !Array.isArray(v.tags) || (kind === 'calm' ? v.level !== 'none' : v.level === 'none')) return;
+    v.tags.forEach(tag => counts.set(tag, (counts.get(tag) || 0) + 1));
+  });
+  return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6);
+}
+function renderStats(){ $('totalMarked').textContent = totalMarked(); $('totalCalm').textContent = totalCalm(); }
+function renderInsights(){
+  const el = $('insights'); el.innerHTML = '';
+  const groups = [ ['Что сопровождает тревогу',topInfluences('trigger')], ['Что помогает чувствовать себя спокойно',topInfluences('calm')] ];
+  const hasAny = groups.some(g=>g[1].length);
+  $('insightsEmpty').style.display = hasAny ? 'none' : 'block';
+  for(const [title,items] of groups){
+    if(!items.length) continue;
+    const section=document.createElement('div'); section.style.width='100%';
+    const heading=document.createElement('div'); heading.className='muted'; heading.style.margin='6px 0'; heading.textContent=title; section.appendChild(heading);
+    const group=document.createElement('div'); group.className='chips';
+    for(const [tag,count] of items){ const chip=document.createElement('div'); chip.className='chip'; const name=document.createElement('span'); name.textContent=tag; const n=document.createElement('strong'); n.textContent=count; chip.append(name,n); group.appendChild(chip); }
+    section.appendChild(group); el.appendChild(section);
+  }
+}
+function renderMonth(){
+  $('monthLabel').textContent = `${monthNames[viewMonth.getMonth()]} ${viewMonth.getFullYear()}`;
+  const cal = $('calendar'); cal.innerHTML = '';
+  const offset = (new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay() + 6) % 7;
+  const total = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate();
+  for(let i=0;i<offset;i++){ const e=document.createElement('div'); e.className='day empty'; cal.appendChild(e); }
+  for(let day=1; day<=total; day++){
+    const key = `${viewMonth.getFullYear()}-${pad(viewMonth.getMonth()+1)}-${pad(day)}`;
+    const entry = entryFor(key);
+    const btn = document.createElement('button');
+    btn.className = `day ${entry.level || ''}`;
+    const notePreview = entry.note ? `<div class="note-preview">${escapeHtml(entry.note)}</div>` : '';
+    const tagsCount = entry.tags && entry.tags.length ? `<div class="tiny">${entry.tags.length} тег.</div>` : '';
+    btn.innerHTML = `<span class="num">${day}</span>${tagsCount || '<span class="dot"></span>'}${notePreview}`;
+    btn.onclick = () => openModal(key);
+    cal.appendChild(btn);
+  }
+}
+function renderYear(){
+  const grid = $('yearGrid'); grid.innerHTML = '';
+  const corner = document.createElement('div'); corner.className = 'yg-head'; corner.textContent = 'Дни'; grid.appendChild(corner);
+  monthNames.forEach(m => { const h = document.createElement('div'); h.className = 'yg-head'; h.textContent = m.slice(0,3); grid.appendChild(h); });
+  const y = viewMonth.getFullYear();
+  for(let day=1; day<=31; day++){
+    const rowHead = document.createElement('div'); rowHead.className='yg-day'; rowHead.textContent=day; grid.appendChild(rowHead);
+    for(let month=0; month<12; month++){
+      const maxDays = new Date(y, month+1, 0).getDate();
+      const cell = document.createElement('button'); cell.className='yg-cell';
+      if(day > maxDays){ cell.classList.add('invalid'); cell.disabled = true; }
+      else {
+        const key = `${y}-${pad(month+1)}-${pad(day)}`;
+        const entry = entryFor(key);
+        if(entry.level) cell.classList.add(entry.level);
+        cell.title = `${day} ${monthGen[month]}`;
+        cell.onclick = () => { viewMonth = new Date(y, month, 1); mode = 'month'; syncModeButtons(); renderAll(); openModal(key); };
+      }
+      grid.appendChild(cell);
+    }
+  }
+}
+function syncModeButtons(){
+  $('modeMonthBtn').setAttribute('aria-selected',mode==='month');
+  $('modeYearBtn').setAttribute('aria-selected',mode==='year');
+  $('yearLabel').hidden=mode!=='year';
+  $('yearLabel').textContent=viewMonth.getFullYear();
+  $('modeMonthBtn').classList.toggle('active', mode==='month');
+  $('modeYearBtn').classList.toggle('active', mode==='year');
+  $('monthView').classList.toggle('active', mode==='month');
+  $('yearView').classList.toggle('active', mode==='year');
+  $('monthNav').style.display = mode==='month' ? 'flex' : 'none';
+  $('todayBtn').hidden = mode!=='month';
+}
+function renderAll(){ renderStats(); renderInsights(); syncModeButtons(); renderMonth(); renderYear(); }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s]); }
+
+let modalScrollY = 0;
+let modalReturnFocus = null;
+function openModal(key){
+  if(!$('modal').classList.contains('open')){
+    modalScrollY=window.scrollY;modalReturnFocus=document.activeElement;
+    document.body.style.position='fixed';document.body.style.top=`-${modalScrollY}px`;document.body.style.width='100%';
+  }
+  $('appMain').inert=true;$('fab').inert=true;
+  selectedKey = key || selectedKey;
+  const entry = entryFor(selectedKey);
+  modalLevel = entry.level || '';
+  modalTags = [...(entry.tags || [])];
+  tagsExpanded = false;
+  $('entryDate').value = selectedKey;
+  $('entryNote').value = entry.note || '';
+  renderLevelButtons();
+  renderTags();
+  $('backdrop').classList.add('open');
+  $('modal').classList.add('open');
+  $('deleteEntry').hidden=!entry.level;
+  updateVisualViewport();
+  $('closeModal').focus({preventScroll:true});
+}
+function closeModal(){
+  const wasOpen=$('modal').classList.contains('open');
+  $('backdrop').classList.remove('open');$('modal').classList.remove('open');
+  $('appMain').inert=false;$('fab').inert=false;
+  document.body.style.position='';document.body.style.top='';document.body.style.width='';
+  if(wasOpen){window.scrollTo(0,modalScrollY);modalReturnFocus?.focus({preventScroll:true});}
+}
+function updateVisualViewport(){
+ const viewport=window.visualViewport;
+ document.documentElement.style.setProperty('--visual-height',`${viewport?.height??window.innerHeight}px`);
+ document.documentElement.style.setProperty('--visual-top',`${viewport?.offsetTop??0}px`);
+}
+window.visualViewport?.addEventListener('resize',updateVisualViewport);
+window.visualViewport?.addEventListener('scroll',updateVisualViewport);
+window.addEventListener('resize',updateVisualViewport);updateVisualViewport();
+document.addEventListener('keydown',event=>{
+ if(!$('modal').classList.contains('open'))return;
+ if(event.key==='Escape')closeModal();
+ if(event.key==='Tab'){
+  const controls=[...$('modal').querySelectorAll('button:not(:disabled),input:not(:disabled),textarea')].filter(el=>el.getClientRects().length);
+  const first=controls[0],last=controls.at(-1);
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ }
+});
+function renderLevelButtons(){
+  const box = $('levels'); box.innerHTML='';
+  Object.entries(levelMeta).forEach(([id, meta]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'level' + (modalLevel === id ? ' active' : '');
+    btn.innerHTML = `<span class="swatch" style="background:${meta[1]}"></span><span>${meta[0]}</span>`;
+    btn.onclick = () => { const changingGroup = (modalLevel === 'none') !== (id === 'none'); if(modalLevel && changingGroup) modalTags=[]; modalLevel = id; renderLevelButtons(); renderTags(); };
+    box.appendChild(btn);
+  });
+}
+function renderTags(){
+  const hasLevel = !!modalLevel;
+  $('tagHeading').textContent = !hasLevel ? 'Сначала выбери уровень тревоги' : modalLevel === 'none' ? 'Что помогло чувствовать себя спокойно?' : 'Что могло вызвать тревогу?';
+  $('tagHint').style.display=hasLevel?'none':'block';
+  $('toggleTags').disabled=!hasLevel;
+  $('customTagInput').disabled=!hasLevel;
+  $('addCustomTag').disabled=!hasLevel;
+  $('entryNote').placeholder=modalLevel==='none'?'Что помогло сегодня чувствовать себя спокойнее?':'Что могло вызвать тревогу сегодня?';
+  const tags = hasLevel ? allTags() : [];
+  const visible = tagsExpanded ? tags : tags.slice(0,8);
+  const tagList = $('tagList'); tagList.innerHTML='';
+  visible.forEach(tag => {
+    const btn = document.createElement('button'); btn.type='button'; btn.className='tagbtn' + (modalTags.includes(tag) ? ' active' : ''); btn.textContent = tag;
+    btn.onclick = () => { if(modalTags.includes(tag)) modalTags = modalTags.filter(t => t !== tag); else modalTags.push(tag); renderTags(); };
+    tagList.appendChild(btn);
+  });
+  $('toggleTags').style.display = hasLevel && tags.length > 8 ? 'inline-block' : 'none';
+  $('toggleTags').textContent = tagsExpanded ? 'Свернуть' : 'Показать ещё';
+  const selected = $('selectedTags'); selected.innerHTML='';
+  modalTags.forEach(tag => { const chip = document.createElement('div'); chip.className='selected-tag'; chip.textContent = tag; selected.appendChild(chip); });
+}
+
+$('customTagInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('addCustomTag').click();$('customTagInput').blur();}});
+$('toggleTags').onclick = () => { tagsExpanded = !tagsExpanded; renderTags(); };
+$('addCustomTag').onclick = () => {
+  const value = $('customTagInput').value.trim();
+  if(!value) return;
+  if(!modalLevel) return; if(!allTags().includes(value)) customTags.push({name:value,category:modalLevel==='none'?'calm':'trigger'});
+  if(!modalTags.includes(value)) modalTags.push(value);
+  $('customTagInput').value = '';
+  tagsExpanded = true;
+  renderTags();
+};
+$('saveEntry').onclick = () => {
+  if(!cloud) return;
+  const key = $('entryDate').value || selectedKey;
+  selectedKey = key;
+  const note = $('entryNote').value.trim();
+  if(!modalLevel){ alert('Выбери уровень тревоги'); return; }
+  data[key] = { level: modalLevel, note, tags: [...new Set(modalTags)] };
+  cloud.save(key,data[key]).catch(showWriteError);
+  viewMonth = monthStart(parseKey(key));
+  renderAll();
+  closeModal();
+};
+$('deleteEntry').onclick = () => { if(!cloud) return; const key = $('entryDate').value || selectedKey; delete data[key]; cloud.remove(key).catch(showWriteError); renderAll(); closeModal(); };
+$('closeModal').onclick = closeModal; $('backdrop').onclick = closeModal; $('fab').onclick = () => openModal(dateKey(new Date()));
+$('modeMonthBtn').onclick = () => { mode = 'month'; renderAll(); }; $('modeYearBtn').onclick = () => { mode = 'year'; renderAll(); };
+$('prevMonth').onclick = () => { viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); renderAll(); };
+$('todayBtn').onclick = () => { viewMonth = monthStart(new Date()); mode = 'month'; renderAll(); };
+$('nextMonth').onclick = () => { viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1); renderAll(); };
+let cloud = null;
+let pendingImport = null;
+function showWriteError(){ $('syncStatus').textContent='Не удалось сохранить. Проверь подключение и права доступа.'; }
+function lockApp(message){pendingImport=null;$('importReview').hidden=true;$('dataMessage').textContent='';data={};closeModal();$('appMain').hidden=true;$('fab').hidden=true;$('accountGate').hidden=false;$('gateMessage').textContent=message;renderAll();}
+$('importBtn').onclick=()=>{ $('importFile').value=''; $('importFile').click(); };
+$('importFile').onchange=async()=>{
+ try{
+  const file=$('importFile').files[0]; if(!file)return;
+  if(file.size>5*1024*1024)throw Error('Файл слишком большой (до 5 МБ).');
+  pendingImport=parseImport(await file.text());
+  const additions=Object.keys(pendingImport).filter(k=>!data[k]).length;
+  $('importSummary').textContent=`В файле ${Object.keys(pendingImport).length} записей. Будет добавлено: ${additions}. Уже существующие даты сохранятся без изменений.`;
+  $('importReview').hidden=false;$('dataMessage').textContent='';
+ }catch(e){pendingImport=null;$('dataMessage').textContent=e.message;}
+};
+$('cancelImport').onclick=()=>{pendingImport=null;$('importReview').hidden=true;};
+$('confirmImport').onclick=async()=>{
+ if(!pendingImport||!cloud)return;
+ const additions=Object.fromEntries(Object.entries(pendingImport).filter(([key])=>!data[key]));
+ $('confirmImport').disabled=true;
+ try{
+  await cloud.importEntries(additions);
+  pendingImport=null;$('importReview').hidden=true;$('dataMessage').textContent='История импортирована.';
+ }catch(e){$('dataMessage').textContent='Импорт не завершён. Его можно повторить: существующие записи не перезапишутся.';}
+ finally{$('confirmImport').disabled=false;}
+};
+$('exportBtn').onclick=async()=>{
+ const blob=new Blob([JSON.stringify({format:'anxiety-tracker',version:1,entries:data},null,2)],{type:'application/json'});
+ const filename=`anxiety-backup-${dateKey(new Date())}.json`;
+ const file=new File([blob],filename,{type:'application/json'});
+ if(navigator.canShare?.({files:[file]})){
+  try{await navigator.share({files:[file],title:'Резервная копия трекера'});return;}
+  catch(error){if(error.name==='AbortError')return;}
+ }
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+try{
+ cloud=await connectCloud({
+  onSignedOut(){lockApp('Войди, чтобы открыть личные записи.');$('signInBtn').hidden=false;},
+  onLoading(){lockApp('Открываем твои записи…');$('signInBtn').hidden=true;},
+  onData(entries,{fromCache,pending}){
+   data=entries;renderAll();$('accountGate').hidden=true;$('appMain').hidden=false;$('fab').hidden=false;
+   $('firstImport').hidden=Object.keys(data).length>0;
+   $('importBtn').disabled=fromCache;
+   $('syncStatus').textContent=pending?'Сохранено на устройстве · ожидает синхронизации':fromCache?'На устройстве · нет связи с сервером':'Синхронизировано';
+  },
+  onError(){lockApp('Не удалось открыть записи. Проверь подключение и настройки доступа.');$('signInBtn').hidden=false;}
+ });
+ $('signInBtn').onclick=async()=>{try{await cloud.signIn();}catch(e){$('gateMessage').textContent='Вход не завершён. Разреши всплывающее окно и попробуй ещё раз.';}};
+ $('signOutBtn').onclick=async()=>{await cloud.signOut();};
+}catch(e){lockApp(e.message);}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+renderAll();
+})();
+</script>
+</body>
+</html>
